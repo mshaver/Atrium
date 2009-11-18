@@ -1,5 +1,5 @@
 <?php
-// $Id$
+// $Id: strongarm.install,v 1.1.2.1 2009/09/29 19:09:33 yhahn Exp $
 
 /**
  * Implementation of hook_enable().
