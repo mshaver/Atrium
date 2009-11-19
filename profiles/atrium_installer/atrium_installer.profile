@@ -38,6 +38,8 @@ function atrium_installer_profile_modules() {
     'og', 'og_access', 'og_actions', 'og_views',
     // Context
     'context', 'context_contrib',
+    // Date
+    'date_api', 'date_timezone',
     // Features
     'features',
     // Image
@@ -89,7 +91,7 @@ function _atrium_installer_atrium_modules() {
     // Casetracker
     'casetracker', 'casetracker_basic',
     // Calendar, date
-    'date', 'date_api', 'date_popup', 'litecal',
+    'date', 'date_popup', 'litecal',
     // CCK
     'content', 'nodereference', 'text', 'optionwidgets',
     // FeedAPI
@@ -348,4 +350,22 @@ function system_form_install_select_profile_form_alter(&$form, $form_state) {
  */
 function system_form_install_select_locale_form_alter(&$form, $form_state) {
   $form['locale']['en']['#value'] = 'en';
+}
+
+/**
+ * Alter the install profile configuration form and provide timezone location options.
+ */
+function system_form_install_configure_form_alter(&$form, $form_state) {
+  if (function_exists('date_timezone_names') && function_exists('date_timezone_update_site')) {
+    $form['server_settings']['date_default_timezone']['#access'] = FALSE;
+    $form['server_settings']['#element_validate'] = array('date_timezone_update_site');
+    $form['server_settings']['date_default_timezone_name'] = array(
+      '#type' => 'select',
+      '#title' => t('Default time zone'),
+      '#default_value' => NULL,
+      '#options' => date_timezone_names(FALSE, TRUE),
+      '#description' => t('Select the default site time zone. If in doubt, choose the timezone that is closest to your location which has the same rules for daylight saving time.'),
+      '#required' => TRUE,
+    );
+  }
 }
