@@ -4,19 +4,29 @@
  * Implementation of hook_theme().
  */
 function tao_theme() {
-  return array(
-    'fieldset' => array(
-      'arguments' => array('element' => array()),
-      'template' => 'object',
-      'path' => drupal_get_path('theme', 'tao') .'/templates',
-    ),
-    'print_header' => array(
-      'arguments' => array(),
-      'template' => 'print-header',
-      'path' => drupal_get_path('theme', 'tao') .'/templates',
-    ),
-    'pager_list' => array(),
+  $items = array();
+
+  // Consolidate a variety of theme functions under a single template type.
+  $items['block'] =
+  $items['box'] =
+  $items['comment'] =
+  $items['fieldset'] =
+  $items['node'] = array(
+    'template' => 'object',
+    'path' => drupal_get_path('theme', 'tao') .'/templates',
   );
+  $items['fieldset']['arguments'] = array('element' => array());
+
+  // Print friendly page headers.
+  $items['print_header'] = array(
+    'arguments' => array(),
+    'template' => 'print-header',
+    'path' => drupal_get_path('theme', 'tao') .'/templates',
+  );
+
+  $items['pager_list'] = array();
+
+  return $items;
 }
 
 /**
@@ -128,6 +138,9 @@ function tao_preprocess_page(&$vars) {
 
     // Use print template
     $vars['template_file'] = 'print-page';
+
+    // Suppress devel output
+    $GLOBALS['devel_shutdown'] = FALSE;
   }
   // Get minimalized CSS
   else {
@@ -187,7 +200,6 @@ function tao_preprocess_node(&$vars) {
 
   // Add print customizations
   if (isset($_GET['print'])) {
-    $vars['pre_object'] = theme('print_header');
     $vars['post_object'] = tao_print_book_children($vars['node']);
   }
 }
@@ -233,14 +245,9 @@ function tao_preprocess_fieldset(&$vars) {
  * Preprocessor for theme_print_header().
  */
 function tao_preprocess_print_header(&$vars) {
-  static $count;
-  $count = !isset($count) ? 1 : $count;
-  global $base_url;
   $vars = array(
     'base_path' => base_path(),
     'theme_path' => base_path() .'/'. path_to_theme(),
-    'count' => $count,
-    'first' => ($count == 1) ? true : false,
     'site_name' => variable_get('site_name', 'Drupal'),
   );
   $count ++;
@@ -342,31 +349,12 @@ function tao_file($element) {
  * block region handling if no region-specific overrides are found.
  */
 function tao_blocks($region) {
-  // Bail if this region has been disabled through context.
-  if (module_exists('context')) {
-    $disabled_regions = context_active_values('theme_regiontoggle');
-    if (!empty($disabled_regions) && in_array($region, $disabled_regions)) {
-      return '';
-    }
+  // Allow theme functions some additional control over regions.
+  $registry = theme_get_registry();
+  if (isset($registry['blocks_'. $region])) {
+    return theme('blocks_'. $region);
   }
-
-  $output = '';
-
-  $list = module_exists('context') && function_exists('context_block_list') ? context_block_list($region) : block_list($region);
-  if (!empty($list)) {
-    // Allow theme functions some additional control over regions
-    $registry = theme_get_registry();
-    if (isset($registry['blocks_'. $region])) {
-      return theme('blocks_'. $region, $list);
-    }
-
-    // Otherwise, flow through regular stack
-    foreach ($list as $key => $block) {
-      $output .= theme("block", $block);
-    }
-  }
-
-  return $output . drupal_get_content($region);
+  return module_exists('context') && function_exists('context_blocks') ? context_blocks($region) : theme_blocks($region);
 }
 
 /**

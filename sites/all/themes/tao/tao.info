@@ -17,7 +17,7 @@ stylesheets[print][] = "print.css"
 
 ; Information added by fserver
 core = "6.x"
-datestamp = "1254156650"
+datestamp = "1258611126"
 project = "tao"
 project status url = "http://code.developmentseed.org/fserver"
-version = "6.x-1.4"
+version = "6.x-1.5"
