@@ -39,35 +39,10 @@ function atrium_strongarm() {
 
   // User registration. Default to no registration.
   // We use variable set here because this value *can* be changed, but
-  // we want to provide a sensible default. We also alter key content
-  // permissions here if no setting value is found.
+  // we want to provide a sensible default.
   $space = spaces_load('site', 1);
   if (!isset($space->settings['atrium_sitemode'])) {
-    variable_set('user_register', 0);
-
-    // Toggle access content, comments perms
-    features_include();
-    $roles = _features_get_roles();
-    _atrium_ensure_perm($roles, 'authenticated user', 'access user profiles');
-    _atrium_ensure_perm($roles, 'authenticated user', 'access content');
-    _atrium_ensure_perm($roles, 'authenticated user', 'access comments');
-    _atrium_ensure_perm($roles, 'authenticated user', 'view revisions');
-
-    _atrium_ensure_perm($roles, 'anonymous user', 'access user profiles');
-    _atrium_remove_perm($roles, 'anonymous user', 'access content');
-    _atrium_remove_perm($roles, 'anonymous user', 'access comments');
-    _atrium_remove_perm($roles, 'anonymous user', 'view revisions');
-
-    _user_features_save_roles($roles);
-  }
-  if (isset($space->settings['atrium_members']) && $space->settings['atrium_members'] == ATRIUM_MEMBERS_GROUP) {
-    features_include();
-    $roles = _features_get_roles();
-    _atrium_remove_perm($roles, 'authenticated user', 'view users outside groups');
-    _atrium_remove_perm($roles, 'anonymous user', 'view users outside groups');
-    _atrium_ensure_perm($roles, 'manager', 'view users outside groups');
-    _atrium_ensure_perm($roles, 'admin', 'view users outside groups');
-    _user_features_save_roles($roles);
+    variable_set('user_register', ATRIUM_SITEMODE_PRIVATE);
   }
 
   $conf['user_signatures'] = FALSE;
@@ -76,6 +51,70 @@ function atrium_strongarm() {
   $conf['user_picture_dimensions'] = '500x500';
   $conf['user_picture_file_size'] = '500';
   return $conf;
+}
+
+/**
+ * Implementation of hook_user_default_permissions().
+ */
+function atrium_user_default_permissions() {
+  $permissions = array();
+
+  $sitemode = variable_get('user_register', ATRIUM_SITEMODE_PRIVATE);
+  switch ($sitemode) {
+    case ATRIUM_SITEMODE_PRIVATE:
+      $permissions[] = array(
+        'name' => 'access user profiles',
+        'roles' => array('authenticated user'),
+      );
+      $permissions[] = array(
+        'name' => 'access content',
+        'roles' => array('authenticated user'),
+      );
+      $permissions[] = array(
+        'name' => 'access comments',
+        'roles' => array('authenticated user'),
+      );
+      $permissions[] = array(
+        'name' => 'view revisions',
+        'roles' => array('authenticated user'),
+      );
+      break;
+    case ATRIUM_SITEMODE_PUBLIC:
+    case ATRIUM_SITEMODE_CONTROLLED:
+      $permissions[] = array(
+        'name' => 'access user profiles',
+        'roles' => array('anonymous user', 'authenticated user'),
+      );
+      $permissions[] = array(
+        'name' => 'access content',
+        'roles' => array('anonymous user', 'authenticated user'),
+      );
+      $permissions[] = array(
+        'name' => 'access comments',
+        'roles' => array('anonymous user', 'authenticated user'),
+      );
+      $permissions[] = array(
+        'name' => 'view revisions',
+        'roles' => array('anonymous user', 'authenticated user'),
+      );
+      break;
+  }
+  switch (variable_get('atrium_members', ATRIUM_MEMBERS_GROUP)) {
+    case ATRIUM_MEMBERS_ALL:
+      $permissions[] = array(
+        'name' => 'view users outside groups',
+        'roles' => array('anonymous user', 'authenticated user', 'manager', 'admin'),
+      );
+      break;
+    case ATRIUM_MEMBERS_GROUP:
+      $permissions[] = array(
+        'name' => 'view users outside groups',
+        'roles' => array('manager', 'admin'),
+      );
+      break;
+  }
+
+  return $permissions;
 }
 
 /**
@@ -247,13 +286,6 @@ function atrium_menu_alter(&$callbacks) {
   // Hijack the /node callback for use as our welcome page
   $callbacks['node']['page callback'] = 'drupal_goto';
   $callbacks['node']['page arguments'] = array('welcome');
-
-  // Administration pages
-  if (module_exists('admin')) {
-    $callbacks = array_merge($callbacks, admin_menu_clone_items('admin/build/features', 'admin/features', $callbacks));
-    $callbacks['admin/features']['options'] = array('admin' => TRUE);
-    $callbacks['admin/features']['menu_name'] = 'admin';
-  }
 }
 
 /**

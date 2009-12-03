@@ -31,39 +31,8 @@ class atrium_setting_sitemode implements space_setting {
   function validate($space, $value) { }
 
   function submit($space, $value) {
-    // Set user registration mode variable
     variable_set('user_register', $value);
-
-    // Toggle access content, comments perms
-    features_include();
-    $roles = _features_get_roles();
-    switch ($value) {
-      case ATRIUM_SITEMODE_PRIVATE:
-        _atrium_ensure_perm($roles, 'authenticated user', 'access user profiles');
-        _atrium_ensure_perm($roles, 'authenticated user', 'access content');
-        _atrium_ensure_perm($roles, 'authenticated user', 'access comments');
-        _atrium_ensure_perm($roles, 'authenticated user', 'view revisions');
-
-        _atrium_remove_perm($roles, 'anonymous user', 'access user profiles');
-        _atrium_remove_perm($roles, 'anonymous user', 'access content');
-        _atrium_remove_perm($roles, 'anonymous user', 'access comments');
-        _atrium_remove_perm($roles, 'anonymous user', 'view revisions');
-        break;
-      case ATRIUM_SITEMODE_PUBLIC:
-      case ATRIUM_SITEMODE_CONTROLLED:
-        _atrium_ensure_perm($roles, 'authenticated user', 'access user profiles');
-        _atrium_ensure_perm($roles, 'authenticated user', 'access content');
-        _atrium_ensure_perm($roles, 'authenticated user', 'access comments');
-        _atrium_ensure_perm($roles, 'authenticated user', 'view revisions');
-
-        _atrium_ensure_perm($roles, 'anonymous user', 'access user profiles');
-        _atrium_ensure_perm($roles, 'anonymous user', 'access content');
-        _atrium_ensure_perm($roles, 'anonymous user', 'access comments');
-        _atrium_ensure_perm($roles, 'anonymous user', 'view revisions');
-        break;
-    }
-    _user_features_save_roles($roles);
-
+    features_rebuild();
     return $value;
   }
 }
@@ -97,23 +66,8 @@ class atrium_setting_members implements space_setting {
   function validate($space, $value) { }
 
   function submit($space, $value) {
-    features_include();
-    $roles = _features_get_roles();
-    switch ($value) {
-      case ATRIUM_MEMBERS_ALL:
-        _atrium_ensure_perm($roles, 'authenticated user', 'view users outside groups');
-        _atrium_ensure_perm($roles, 'anonymous user', 'view users outside groups');
-        _atrium_ensure_perm($roles, 'manager', 'view users outside groups');
-        _atrium_ensure_perm($roles, 'admin', 'view users outside groups');
-        break;
-      case ATRIUM_MEMBERS_GROUP:
-        _atrium_remove_perm($roles, 'authenticated user', 'view users outside groups');
-        _atrium_remove_perm($roles, 'anonymous user', 'view users outside groups');
-        _atrium_ensure_perm($roles, 'manager', 'view users outside groups');
-        _atrium_ensure_perm($roles, 'admin', 'view users outside groups');
-        break;
-    }
-    _user_features_save_roles($roles);
+    variable_set('atrium_members', $value);
+    features_rebuild();
     return $value;
   }
 }
